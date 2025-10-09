@@ -1,0 +1,54 @@
+Comandos usados practica 1
+
+sudo apt update && sudo apt upgrade -y
+ls /etc/apt/sources.list.d/
+cat /etc/apt/sources.list
+apt search bashtop
+git clone https://github.com/aristocratos/bashtop.git
+sudo find  /urs/local -iname '*bashtop*'
+sudo apt install bashtop -y
+sudo apt update
+cd bashtop
+bashtop
+sudo make install
+which bashtop
+sudo rm -rf /urs/local/bin/bashtop
+Comandos usados practica 2
+
+sudo crontab -e
+
+
+0 23 * * * apt update && apt upgrade -y
+0 3 * * 0 /sbin/reboot
+
+
+sudo systemctl enable --now atd
+ls /tmp
+echo "rm -rf /tmp/*" | at now + 1 minute
+atq
+su
+
+Comandos usados practica 3
+
+sudo fdisk -l
+sudo fdisk /dev/sdbn
+
+n
+p
+1
+[Enter]
+[Enter]
+w
+
+sudo mkfs.ext4 /dev/sdb
+mkdir ~/Desktop/file
+sudo mount /dev/sdb ~/Desktop/file
+cd ~/Desktop/file
+sudo touch AdrianAlcantara.txt
+sudo umount ~/Desktop/file
+sudo mount /dev/sdb /mnt
+ls /mnt
+lsblk
+cd
+cd ..
+
