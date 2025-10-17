@@ -1,0 +1,40 @@
+Comandos usados practica 1
+n/a
+
+
+
+Comandos usados practica 2
+Nmtui
+Ip addrs
+Clear
+Nmcli
+Nmcli connection up Network
+Nmcli connection down Network
+Nmcli connection modify Network ipv4.method auto
+Nmcli connection modify Network ipv4.method manual
+Nmcli connection modify Network ipv4.addresess 
+Nmcli connection modify Network ipv4.gateway
+Nmcli connection modify Network ipv4.dns
+
+
+
+
+Comandos usados practica 3
+Sudo useradd
+Sudo usermod -aG
+Groups
+Groupadd
+Sudo delgroup
+Getent group
+
+
+Comandos usados practica 4
+Ls
+Cd
+Touch
+Vi
+Ls -l
+Chmod
+Mkdir
+Cp
+Rm -rf

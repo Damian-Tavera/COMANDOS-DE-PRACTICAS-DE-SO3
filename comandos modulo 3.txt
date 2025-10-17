@@ -1,0 +1,32 @@
+Comandos usados practica 1
+
+sudo nano /etc/default/grub
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
+rw init=/bin/bash
+passwd root
+reboot -f
+
+Comandos usados practica 2
+
+sudo nano backup.sh
+./backup.sh
+sudo chmod +x backup.sh
+cd /home/damiantavera
+ls -l
+clear
+sudo nano ifconfig.sh
+sudo chmod +x ifconfig.sh
+./ifconfig.sh
+cat
+Comandos usados practica 3
+
+sudo apt install openssh-server
+sudo systemclt start ssh
+sudo systemclt status ssh
+ssh damiantavera@192.168.100.249
+ssh key-gen
+cd
+mkdir
+touch
+nano
