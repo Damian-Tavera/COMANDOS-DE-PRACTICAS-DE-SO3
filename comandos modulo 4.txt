@@ -1,0 +1,10 @@
+commandos utilizdos en la practica 1
+cd
+mkdir
+su
+sudo
+nano
+systemctl status
+systemctl start
+systemctl enable
+systemctl restart 
