@@ -1,0 +1,176 @@
+PRACTICA 1
+# ----------------------------------------------------------------------------------
+# CONFIGURACIÓN RSYNC 
+# ----------------------------------------------------------------------------------
+
+# I. Preparación del Entorno (En AMBOS Nodos)
+sudo apt update
+sudo apt install rsync -y
+sudo systemctl enable ssh
+sudo systemctl start ssh
+# Asegurar permisos para operar en / (ROOT)
+sudo apt install -y ssh
+sudo chown -R damiantavera:damiantavera ~
+
+# II. Configuración del Origen y Destino (En NODOS ESPECÍFICOS)
+
+### EN EL NODO PRINCIPAL (192.168.100.249) - Carpeta Origen ###
+sudo mkdir /carpeta
+sudo touch /carpeta/archivo{1..100}.txt
+sudo chown -R damiantavera:damiantavera /carpeta
+
+### EN EL NODO CLON (192.168.100.250) - Carpeta Destino ###
+sudo mkdir /carpetadestino
+sudo chown -R damiantavera:damiantavera /carpetadestino
+
+# III. Configuración de SSH sin Contraseña (En el NODO PRINCIPAL)
+ssh-keygen
+# Copia la llave pública:
+ssh-copy-id damiantavera@192.168.100.250
+
+# IV. Sincronización y Automatización (En el NODO PRINCIPAL)
+# Sincronización manual inicial
+rsync -avz /carpeta/ damiantavera@192.168.100.250:/carpetadestino/
+
+# Crear script de sincronización
+cd ~
+nano carpeta2.sh
+# Pega este contenido:
+# -----------------------------------------------------------------
+#!/bin/bash
+rsync -avz /carpeta/ damiantavera@192.168.100.250:/carpetadestino/
+# -----------------------------------------------------------------
+chmod +x ~/carpeta2.sh
+
+# Crear tarea automática cada minuto con Cron
+crontab -e
+# Añade esta línea al final:
+* * * * * /home/damiantavera/carpeta2.sh
+
+
+
+
+Practica 3
+# =======================================================================
+# CONFIGURACIÓN CLUSTER HA: APACHE Y KEEPALIVED (PARROT OS)
+# IP FLOTANTE: 192.168.100.211
+# =======================================================================
+
+# -----------------------------------------------------------------------
+# PARTE 1: PREPARACIÓN Y BASE (EN AMBOS NODOS)
+# -----------------------------------------------------------------------
+
+# Instalar Apache (apache2) y Keepalived
+sudo apt update && sudo apt install apache2 keepalived -y
+
+# Habilitar y Arrancar Apache (el servicio se llama apache2 en Debian)
+sudo systemctl enable apache2
+sudo systemctl start apache2
+
+# 3. Configurar /etc/hosts (Ejecutar este comando de edición)
+sudo nano /etc/hosts
+# AÑADE estas dos líneas al final del archivo en AMBOS NODOS:
+# 192.168.100.249  node1
+# 192.168.100.250  node2
+
+# 4. Configurar el Firewall (UFW)
+sudo ufw allow http
+sudo ufw reload
+
+# -----------------------------------------------------------------------
+# PARTE 2: CREACIÓN DE PÁGINAS WEB (¡EJECUTAR SÓLO EN SU NODO CORRESPONDIENTE!)
+# -----------------------------------------------------------------------
+
+### A. EN NODO MASTER (192.168.100.249) ###
+echo '<html><body><h1 style="color:blue;">Cluster-Damiantavera: Servidor UNO (192.168.100.249) - MASTER</h1></body></html>' | sudo tee /var/www/html/index.html
+sudo chown www-data:www-data /var/www/html/index.html
+
+### B. EN NODO BACKUP (192.168.100.250) ###
+echo '<html><body><h1 style="color:blue;">Cluster-Damiantavera: Servidor UNO (192.168.100.249) - MASTER</h1></body></html>' | sudo tee /var/www/html/index.html
+sudo chown www-data:www-data /var/www/html/index.html
+
+
+# -----------------------------------------------------------------------
+# PARTE 3: CONFIGURACIÓN DE KEEPALIVED (¡EJECUTAR SÓLO EN SU NODO CORRESPONDIENTE!)
+# -----------------------------------------------------------------------
+
+# Eliminar el archivo de configuración por defecto (En AMBOS NODOS)
+sudo rm /etc/keepalived/keepalived.conf
+
+# A. EN NODO MASTER (192.168.100.249)
+sudo nano /etc/keepalived/keepalived.conf
+# COPIA y PEGA el siguiente contenido en el archivo:
+# --- INICIO CONTENIDO MASTER ---
+vrrp_script chk_httpd {
+    script "systemctl status apache2"
+    interval 2
+    weight 2
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface ens160          # Reemplaza con tu interfaz si es necesario
+    virtual_router_id 51
+    priority 115              # Prioridad ALTA
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass mi_password_secreto
+    }
+
+    virtual_ipaddress {
+        192.168.100.211/24
+    }
+
+    track_script {
+        chk_httpd
+    }
+}
+# --- FIN CONTENIDO MASTER ---
+# (Ctrl+O para guardar, Enter, Ctrl+X para salir)
+
+
+# B. EN NODO BACKUP (192.168.100.250)
+sudo nano /etc/keepalived/keepalived.conf
+# COPIA y PEGA el siguiente contenido en el archivo:
+# --- INICIO CONTENIDO BACKUP ---
+vrrp_script chk_httpd {
+    script "systemctl status apache2"
+    interval 2
+    weight 2
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface ens160          # Reemplaza con tu interfaz si es necesario
+    virtual_router_id 51
+    priority 99               # Prioridad BAJA
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass mi_password_secreto
+    }
+
+    virtual_ipaddress {
+        192.168.100.211/24
+    }
+
+    track_script {
+        chk_httpd
+    }
+}
+# --- FIN CONTENIDO BACKUP ---
+# (Ctrl+O para guardar, Enter, Ctrl+X para salir)
+
+# -----------------------------------------------------------------------
+# PARTE 4: INICIAR Y VERIFICAR (EN AMBOS NODOS)
+# -----------------------------------------------------------------------
+
+# Reiniciar y habilitar Keepalived
+sudo systemctl restart keepalived
+sudo systemctl enable keepalived
+
+# Verificar el estado (El nodo MASTER debe mostrar que posee la IP flotante)
+sudo systemctl status keepalived
