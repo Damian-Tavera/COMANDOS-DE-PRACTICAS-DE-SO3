@@ -1,0 +1,93 @@
+Practica 1
+
+sudo apt update
+sudo apt install gnupg2 -y
+
+mkdir ~/practica_cifrado
+cd ~/practica_cifrado
+
+echo "Este es un archivo secreto de prueba para la práctica de GPG2." > secreto.txt
+cat secreto.txt
+
+gpg2 -c secreto.txt
+ls
+cat secreto.txt.gpg
+
+rm secreto.txt
+ls
+
+gpg2 secreto.txt.gpg
+cat secreto.txt
+
+
+Practica 2
+
+Instalar y habilitar servicios (HTTP, FTP, SSH)
+sudo apt update
+
+
+
+sudo apt install apache2 vsftpd openssh-server -y
+sudo systemctl enable apache2 vsftpd ssh
+sudo systemctl start apache2 vsftpd ssh
+sudo systemctl status apache2
+sudo systemctl status vsftpd
+sudo systemctl status ssh
+
+
+ Verifica que los tres servicios estén activos y funcionando.
+
+sudo iptables -A INPUT -p tcp --dport 80 -j DROP
+sudo iptables -A INPUT -p tcp --dport 21 -j DROP
+sudo iptables -A INPUT -p tcp --dport 22 -j DROP
+sudo iptables -L -n -v
+
+
+ Muestra todas las reglas activas del firewall iptables.
+
+Habilitar nuevamente los puertos (eliminar reglas)
+sudo iptables -D INPUT -p tcp --dport 80 -j DROP
+sudo iptables -D INPUT -p tcp --dport 21 -j DROP
+sudo iptables -D INPUT -p tcp --dport 22 -j DROP
+
+
+Elimina las reglas anteriores para permitir nuevamente el tráfico en esos puertos.
+
+sudo iptables -L -n -v
+
+
+Verifica que las reglas hayan sido eliminadas.
+
+Configurar UFW (firewall de Ubuntu)
+sudo apt install ufw -y
+
+ Instala UFW (Uncomplicated Firewall).
+
+sudo ufw enable
+
+
+Activa el firewall UFW.
+
+sudo ufw deny 80/tcp
+sudo ufw deny 21/tcp
+sudo ufw deny 22/tcp
+
+
+Bloquea el tráfico TCP en los puertos 80, 21 y 22.
+
+sudo ufw status numbered
+
+ Muestra las reglas de UFW con números de línea.
+
+Habilitar nuevamente los puertos
+sudo ufw allow 80/tcp
+sudo ufw allow 21/tcp
+sudo ufw allow 22/tcp
+
+
+Permite nuevamente el tráfico TCP en los puertos 80, 21 y 22.
+
+sudo ufw status
+
+
+Verifica el estado actual del firewall y las reglas activas.
