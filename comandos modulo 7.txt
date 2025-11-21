@@ -1,0 +1,284 @@
+PRACTICA 1
+
+# 1. Actualizar e instalar el paquete del servidor NFS
+sudo apt update
+sudo apt install nfs-kernel-server -y
+
+# 2. Iniciar y habilitar el servicio
+sudo systemctl start nfs-server
+sudo systemctl enable nfs-server
+
+# 3. Crear el directorio a compartir y 100 archivos
+sudo mkdir -p /var/nfs/os3
+cd /var/nfs/os3
+sudo touch Adrian{1..100}.txt
+
+# 4. Asignar propiedad (nobody:nogroup) y permisos
+sudo chown nobody:nogroup /var/nfs/os3
+sudo chmod 755 /var/nfs/os3
+
+# 5. Configurar el archivo /etc/exports (Autorizando a toda la subred 192.168.100.0/24)
+sudo nano /etc/exports
+> /var/nfs/os3 192.168.100.0/24(rw,sync,no_subtree_check)
+
+# 6. Exportar los recursos para que los cambios surtan efecto
+sudo exportfs -rav
+
+# 7. Configurar Firewall (UFW) para permitir el tráfico NFS desde la subred
+sudo ufw allow from 192.168.100.0/24 to any port nfs
+sudo ufw reload 
+
+
+
+
+# 1. Actualizar e instalar el paquete cliente NFS
+sudo apt update
+sudo apt install nfs-common -y
+
+# 2. Crear un punto de montaje local
+sudo mkdir -p /mnt/os3
+
+# 3. Montar manualmente el recurso NFS y verificar
+# La IP del servidor es 192.168.100.249
+sudo mount -t nfs 192.168.100.249:/var/nfs/os3 /mnt/os3
+df -h
+ls /mnt/os3
+
+# 4. Hacer el montaje permanente editando /etc/fstab
+sudo nano /etc/fstab
+# La línea posterior al signo ">"
+> 192.168.100.249:/var/nfs/os3 /mnt/os3 nfs defaults 0 0
+
+# 5. Reiniciar la máquina y verificar la persistencia del montaje
+sudo reboot
+# Tras el reinicio, verificar el montaje automático:
+df -h
+ls /mnt/os3
+
+==============================================================================================================================================================================
+PRACTICA 2
+# 1. Actualizar e instalar SAMBA y herramientas necesarias
+sudo apt update
+sudo apt install samba samba-client samba-common -y
+
+# 2. Habilitar e iniciar los servicios SMB y NMB
+sudo systemctl enable --now smbd nmbd
+
+# 3. Crear la carpeta compartida y archivos de prueba:
+sudo mkdir -p /srv/samba/public
+cd /srv/samba/public
+touch Adrian{1..100}.txt
+
+# 4. Configurar permisos y propiedades:
+sudo chmod -R 777 /srv/samba/public
+sudo chown -R nobody:nogroup /srv/samba/public
+
+# 5. Configurar el Firewall (UFW) para SAMBA:
+# La regla 'allow samba' abre todos los puertos requeridos (137, 138, 139, 445).
+sudo ufw allow samba
+sudo ufw reload
+
+# 1. Editar el archivo de configuración de SAMBA
+sudo nano /etc/samba/smb.conf
+
+# 2. Agregar la siguiente sección al final del archivo:
+# --- INICIO DE SECCIÓN ---
+[public]
+    path = /srv/samba/public
+    browsable = yes
+    writable = yes
+    guest ok = yes
+    read only = no
+    force user = nobody
+# --- FIN DE SECCIÓN ---
+
+# 1. Crear el grupo y el usuario 'damiantavera'
+sudo groupadd sambausers
+sudo useradd -M -s /usr/sbin/nologin damiantavera
+sudo usermod -aG sambausers damiantavera
+
+# 2. Asignar la contraseña de SAMBA (Este usuario se usará en Windows)
+sudo smbpasswd -a damiantavera
+# (Se te pedirá que introduzcas la nueva contraseña de Samba)
+
+# 3. Reiniciar los servicios de SAMBA:
+sudo systemctl restart smbd nmbd
+
+Paso	Acciones en Windows
+Conectar Unidad	Abrir Explorador de Archivos > Este equipo > Conectar a unidad de red...
+Ruta	Escribir la ruta UNC: \\192.168.100.249\public
+Credenciales	Usar las credenciales creadas: Usuario: damiantavera, Contraseña: [La contraseña que definiste].
+
+
+cd /srv/samba/public
+cat Adrian99.txt
+
+
+==============================================================================================================================================================================
+PRACTICA 3
+# 1. Configurar el nombre del host del servidor
+hostnamectl set-hostname SO3-DOM
+hostnamectl set-hostname SO3.inet --static
+
+# 2. Configurar el archivo /etc/hosts para asegurar la resolución local
+sudo nano /etc/hosts
+# ASEGÚRATE de que la línea para tu IP local es correcta
+>192.168.100.249 SO3-DOM SO3.inet inet
+
+# 3. Reiniciar tarjeta de red (CORRECCIÓN DE INTERFAZ)
+sudo nmcli device disconnect ens33
+sudo nmcli device connect ens33
+
+# 4. Renombrar archivos de configuración antiguos para copia de seguridad:
+sudo mv /etc/samba/smb.conf /etc/samba/smb.conf.backup
+sudo mv /etc/krb5.conf /etc/krb5.conf.backup
+
+
+# 1. Descargar el paquete de samba desde el sitio web oficial
+wget https://download.samba.org/pub/samba/stable/samba-4.16.2.tar.gz
+
+# 2. Crear carpeta de compilación y mover el archivo
+sudo mkdir -p /samba
+sudo mv samba-4.16.2.tar.gz /samba/
+cd /samba/
+sudo tar -zxf samba-4.16.2.tar.gz
+cd samba-4.16.2/
+
+# 3. Instalación de dependencias (Usando APT)
+sudo apt install -y \
+    build-essential \
+    libacl1-dev \
+    libarchive-dev \
+    libattr1-dev \
+    libblkid-dev \
+    libcups2-dev \
+    libgnutls28-dev \
+    libgssapi-krb5-2 \
+    libjansson-dev \
+    libldap2-dev \
+    liblmdb-dev \
+    libncurses-dev \
+    libpam0g-dev \
+    libpopt-dev \
+    libtalloc-dev \
+    libtasn1-6-dev \
+    libtdb-dev \
+    libtevent-dev \
+    libtirpc-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    python3-dev \
+    python3-cryptography \
+    python3-dnspython \
+    python3-gpg \
+    python3-markdown \
+    python3-samba \
+    python3-all-dev \
+    docbook-xml \
+    docbook-xsl \
+    flex \
+    bison \
+    perl \
+    perl-base \
+    pkg-config \
+    keyutils \
+    libaio-dev \
+    gdb \
+    screen
+
+sudo apt install libgpgme-dev -y
+
+sudo apt install libparse-yapp-perl -y
+
+# 1. Ejecutar el script de configuración
+./configure
+
+# 2. Compilar e instalar Samba
+make -j 2
+sudo make -j 2 install
+
+# 3. Exportar el path binario de Samba (Temporal)
+export PATH=/usr/local/samba/bin/:/usr/local/samba/sbin/:$PATH
+
+# 4. Agregar el path permanente
+sudo nano ~/.bashrc
+# Agrega esta línea al final:
+> export PATH=/usr/local/samba/bin/:/usr/local/samba/sbin/:$PATH
+# Haz lo mismo para el root
+sudo nano /root/.bashrc
+# Agrega la misma línea
+
+# 1. Provisión del dominio (CORRECCIÓN DE INTERFAZ)
+sudo /usr/local/samba/bin/samba-tool domain provision --use-rfc2307 --interactive --option="interfaces=lo ens33" --option="bind interfaces only=yes"
+
+# RESPUESTAS INTERACTIVAS:
+# Realm [INET]: SO3.inet
+# Domain [SO3]: SO3-DOM
+# Server Role (dc, member, standalone) [dc]: dc
+# DNS backend (SAMBA_INTERNAL, BIND9_FLATFILE, BIND9_DLZ, NONE) [SAMBA_INTERNAL]: SAMBA_INTERNAL
+# DNS forwarder IP address (write 'none' to disable forwarding) [8.8.8.8]: Enter
+# Administrator password: [TU CONTRASEÑA SECRETA]
+# Retype password: [TU CONTRAÑA SECRETA]
+
+
+# 2. Configurar resolv.conf para usar el DNS local (La IP del DC)
+sudo nano /etc/resolv.conf
+# Elimina cualquier nameserver anterior y agrega la IP de tu servidor y el dominio de búsqueda
+> nameserver 127.0.0.1
+> nameserver 192.168.100.249
+> search SO3.inet
+
+# 3. Copiar archivo de configuración de Kerberos
+sudo cp /usr/local/samba/private/krb5.conf /etc/krb5.conf
+
+# 4. Iniciar el servicio SAMBA_AD_DC
+sudo /usr/local/samba/sbin/samba
+
+# 5. Comprobar la funcionalidad de Kerberos y DNS
+kinit administrator
+ping www.google.com
+host -t SRV _ldap._tcp SO3.inet
+
+# 1. Instalar y configurar iptables
+sudo apt install iptables-persistent -y
+sudo systemctl stop smbd nmbd # Asegura que los servicios de APT no corran
+
+# 2. Detener UFW (Para usar Iptables)
+sudo ufw disable
+
+# 3. Limpiar Iptables (Para empezar de cero)
+sudo iptables -F
+sudo iptables -X
+
+# 4. Establecer las reglas críticas del Controlador de Dominio (CORRECCIÓN DE IPS)
+# Asumiendo que el tráfico viene de la subred 192.168.100.0/24
+sudo iptables -A INPUT -p tcp -s 192.168.100.0/24 -m state --state NEW -m multiport --dports 53,88,135,139,389,445,464,636,3268,49152:65535 -j ACCEPT
+sudo iptables -A INPUT -p udp -s 192.168.100.0/24 -m state --state NEW -m multiport --dports 53,123,137,138,389,636 -j ACCEPT
+
+# 5. Aceptar el tráfico ya establecido
+sudo iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# 6. Guardar las reglas para que persistan en el reinicio
+sudo iptables-save | sudo tee /etc/iptables/rules.v4
+sudo systemctl restart netfilter-persistent
+
+# 7. Verificar el estado
+sudo iptables -L -n
+
+# 1. Crear usuario del dominio
+sudo /usr/local/samba/bin/samba-tool user create lanegracubana "damiantavera@20251404" --given-name="La Negra" --surname="Cubana" --mail=lanegracubana@so3.inet
+
+# 2. Agregar el usuario a Domain Admins (OPCIONAL)
+sudo /usr/local/samba/bin/samba-tool group addmembers "Domain Admins" lanegracubana
+sudo /usr/local/samba/bin/samba-tool group listmembers "Domain Admins"
+
+# 3. Agregar una entrada DNS 
+sudo /usr/local/samba/bin/samba-tool dns add 192.168.100.249 SO3.inet www A 192.168.100.249 -U lanegracubana
+
+Paso	Acciones en Windows
+Configurar DNS	Panel de Control > Configuración de Red > Adaptador > Propiedades (TCP/IPv4).
+Preferred DNS	Escribir la IP del servidor Samba: 192.168.100.249.
+Sufijo DNS	Avanzado > DNS > Sufijo DNS para esta conexión > SO3.inet
+Verificar Conectividad	Abrir CMD: ping SO3.inet
+Unirse al Dominio	Configuración > Acerca de (About your PC) > Configuración avanzada del sistema > Nombre de equipo > Cambiar > Dominio > SO3.inet
+Credenciales	Usar SO3-DOM\Administrator o lanegracubana@SO3.inet y la contraseña.
