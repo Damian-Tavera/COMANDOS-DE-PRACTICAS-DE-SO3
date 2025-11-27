@@ -1,0 +1,154 @@
+============================================================================================================================================================================================================================================================================================================================================================
+
+
+============================================================================================================================================================================================================================================================================================================================================================
+
+
+practica 1
+
+# 1. Actualiza la lista de paquetes
+sudo apt update
+
+# 2. Instala las dependencias necesarias
+sudo apt install ca-certificates curl gnupg lsb-release -y
+
+# Eliminar posibles claves GPG anteriores
+sudo rm -f /etc/apt/keyrings/docker.gpg
+
+# Eliminar posibles entradas de repositorio anteriores
+sudo rm -f /etc/apt/sources.list.d/docker.list
+
+# 1. Crear el directorio de claves GPG
+sudo install -m 0755 -d /etc/apt/keyrings
+
+# 2. Descargar la clave GPG oficial y almacenarla
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# 3. Añadir el repositorio de Docker usando 'bookworm' (la base actual de Parrot) o 'debian'.
+# Usaremos 'bookworm' (Debian 12) que es más probable que funcione con las últimas versiones de Parrot.
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# 4. Actualizar el índice de paquetes para reconocer los nuevos paquetes
+sudo apt update
+
+# 5. Instalar Docker Engine
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+
+# Habilitar y Verificar
+sudo systemctl enable --now docker
+sudo systemctl start docker
+sudo docker run hello-world
+docker --version
+
+# Práctica Nginx con datos del estudiante (Damian Tavera, 2025-1404)
+sudo docker pull nginx
+sudo mkdir -p /home/website
+sudo tee /home/website/index.html > /dev/null <<EOL
+<html>
+ <head>
+  <title>DOCKER x NGINX</title>
+ </head>
+ <body>
+  <H3>Damian Tavera<br>
+  Matrícula: 2025-1404</H3>
+ </body>
+</html>
+EOL
+sudo docker run -d -p 8888:80 -v /home/website:/usr/share/nginx/html/ nginx
+docker ps -a
+
+#En el navegador de nuestra máquina:
+
+127.0.0.1:8888
+
+============================================================================================================================================================================================================================================================================================================================================================
+
+practica 2
+
+https://docs.portainer.io/start/install-ce/server/docker/linux
+
+#Instalar Portainer
+
+sudo docker volume create portainer_data
+
+sudo docker run -d -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:lts
+
+
+docker ps -a
+
+#En el navegador de nuestra máquina:
+
+https://127.0.0.1:9443
+
+#Una vez creado nuestro usuario e iniciado en la interfaz de Portainer:
+
+Add Environments >Docker Standalone >Start Wizard
+
+#Copia el comando para el agente, creado por el Wizard, y pégalo en la CLI de la máquina.
+
+#Devuelta en Portainer, llenamos los apartados "Name" y "Environment address" (En el Environment address colocaremos la ip de la máquina:puerto del agente. Ej: 12.168.1.100:9001). Luego, click en "Connect", y "Close".
+
+Click en el Environment creado >Containers >Nginx >Stop
+
+============================================================================================================================================================================================================================================================================================================================================================
+
+practica 3
+
+#Instalar Docker Compose:
+
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+docker-compose version
+
+#Crear directorio para el proyecto:
+
+mkdir ~/wordpress-compose
+cd ~/wordpress-compose
+nano docker-compose.yml
+
+>
+
+services:
+  db:
+    image: mysql:5.7
+    container_name: wordpress_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: wp_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    volumes:
+      - db_data:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress_app
+    restart: always
+    ports:
+      - "8000:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: wp_pass
+    depends_on:
+      - db
+    volumes:
+      - wp_data:/var/www/html
+
+volumes:
+  db_data:
+  wp_data:
+
+
+#Luego de guardar y salir, desplegamos los contenedores:
+
+sudo docker compose up -d
+sudo docker ps
+
+#Desde el navegador:
+http://localhost:8000
