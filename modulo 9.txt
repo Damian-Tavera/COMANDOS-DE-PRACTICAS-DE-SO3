@@ -1,0 +1,300 @@
+Practica 1
+
+# =================================================================
+# PASO 1: AGREGAR EL REPOSITORIO Y LA CLAVE GPG DE WEBMIN
+# =================================================================
+
+# 1. Descargar e importar la clave GPG
+wget -q -O- http://www.webmin.com/jcameron-key.asc | sudo apt-key add -
+
+# 2. Agregar el repositorio de Webmin a las fuentes de APT
+sudo sh -c 'echo "deb http://download.webmin.com/download/repository sarge contrib" > /etc/apt/sources.list.d/webmin.list'
+
+# 3. Actualizar la lista de paquetes
+sudo apt update
+
+# =================================================================
+# PASO 2: INSTALAR WEBMIN
+# =================================================================
+
+# Instalar el paquete Webmin
+sudo apt install webmin -y
+
+# =================================================================
+# PASO 3: CONFIGURAR EL FIREWALL
+# =================================================================
+
+# Permitir el tráfico en el puerto 10000/tcp (puerto por defecto de Webmin)
+sudo ufw allow 10000/tcp
+
+# Recargar o habilitar el firewall UFW si no estaba activo
+sudo ufw enable
+
+https://192.168.100.250:10000
+
+==============================================================================================================================================================================
+
+==============================================================================================================================================================================
+
+Practica 2
+
+#Crear token de API en DigitalOcean
+> API >Generate New Token > Name (terraform-token) >Read and Write' (full access)>Generate Token.
+
+#Crear o subir la llave pública SSH
+>Settings >Security >Add SSH Key.
+
+#En nuestro servidor parrot, ejecutamos:
+   cat /root/.ssh/id_ed25519.pub
+
+
+#Copiamos la salida del comando anterior (Si no existe, créala con ssh-keygen) y pégala en DigitalOcean.
+sudo apt update
+sudo apt install wget software-properties-common -y
+wget -O- https://apt.releases.hashicorp.com/gpg | \
+    gpg --dearmor | \
+    sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+    sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update
+sudo apt install terraform -y
+terraform --version
+
+
+#Crear carpeta y archivo de configuración Terraform
+
+mkdir ~/terraform-digitalocean
+cd ~/terraform-digitalocean
+
+nano main.tf
+
+   terraform {
+     required_providers {
+       digitalocean = {
+         source  = "digitalocean/digitalocean"
+         version = "~> 2.0"
+       }
+     }
+   }
+   provider "digitalocean" {
+     token = var.do_token
+   }
+   variable "do_token" {}
+
+
+#Crear archivo de variables para el token
+nano terraform.tfvars
+
+#Escribe tu token:
+do_token = "TU_TOKEN_DE_DIGITALOCEAN"
+
+#Inicializar Terraform
+terraform init
+
+#Crear la configuración del Droplet
+nano main.tf
+
+#Añade al final:
+   resource "digitalocean_droplet" "os3vm" {
+     image    = "ubuntu-22-04-x64"
+     name     = "OS3vm"
+     region   = "nyc1"
+     size     = "s-1vcpu-1gb"
+     ssh_keys = [ "TU_FINGERPRINT_DE_LA_LLAVE" ]
+   }
+
+
+#Validar configuración
+terraform validate
+
+#Desplegar la máquina virtual
+terraform apply
+
+#Validar la VM en el portal de DigitalOcean.
+
+#Por SSH (Reemplaza DIRECCION_IP con la IP pública del droplet)
+   ssh root@DIRECCION_IP
+
+==============================================================================================================================================================================
+
+==============================================================================================================================================================================
+
+Practica 3
+
+# 1. Instalar Ansible
+sudo apt update
+sudo apt install ansible -y
+
+# 2. Instalar pip3 (si no está instalado)
+sudo apt install python3-pip -y
+
+# 3. Instalar dependencias de Python para conectar con Windows (WinRM)
+sudo apt install python3-winrm -y
+pip3 install pywinrm --break-system-packages
+sudo apt autoremove
+
+# 4. Verificar la instalación de Ansible
+ansible --version
+
+
+# 1. Crear el usuario 'ansible' en ambas máquinas Linux (VM-Server y VM-Cliente)
+sudo useradd -m ansible
+sudo passwd ansible
+
+# 2. Agregar el usuario 'ansible' al grupo 'wheel' o 'sudo' para permisos de administrador
+# En Debian/Parrot, el grupo de sudo es 'sudo', no 'wheel'.
+sudo usermod -aG sudo ansible
+
+
+# 3. Permitir sudo sin contraseña (Opcional, pero recomendado para IaC)
+echo 'ansible ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/ansible
+
+# 4. Crear la clave SSH (Si no existe) en el VM-Server (donde ejecutarás Ansible)
+ssh-keygen
+
+# 5. Mostrar la clave pública para copiarla o usar ssh-copy-id
+cat ~/.ssh/id_rsa.pub
+
+# 6. Copiar la clave pública al cliente Linux (reemplaza [IP_DEL_CLIENTE_LINUX])
+ssh-copy-id ansible@[IP_DEL_CLIENTE_LINUX]
+
+winrm quickconfig
+winrm set winrm/config/service/auth '@{Basic="true"}'
+winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+winrm set winrm/config/listener?Address=*+Transport=HTTP '@{Port="5985"}'
+
+Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true
+Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true
+
+# Editar el archivo de inventario en Parrot OS
+sudo nano /etc/ansible/hosts
+
+[linux]
+cliente1 ansible_host=[IP_DEL_CLIENTE_LINUX] ansible_user=ansible ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_become=true ansible_become_method=sudo
+
+[win]
+cliente2 ansible_host=[IP_DEL_CLIENTE_WINDOWS] ansible_user=ansible ansible_password=[TU_CONTRASEÑA] ansible_connection=winrm ansible_winrm_transport=basic ansible_port=5985 ansible_winrm_server_cert_validation=ignore
+
+# Probar conectividad con el cliente Linux
+ansible linux -m ping
+
+# Probar conectividad con el cliente Windows
+ansible win -m win_ping
+
+==============================================================================================================================================================================
+
+==============================================================================================================================================================================
+
+Practica 4
+
+#Comando ad-hoc para reiniciar la VM cliente Linux (ansible1)
+ansible linux -m reboot -b
+
+#Comando ad-hoc para copiar un archivo de Windows (deberás poseer el archivo txt a utilizar, localizado en el escritorio de tu máquina)
+ansible win -m win_copy \
+  -a "src='C:/Users/Ansible/Desktop/prueba.txt' dest='C:/Users/Ansible/Documents/prueba.txt' remote_src=yes"
+
+==============================================================================================================================================================================
+
+==============================================================================================================================================================================
+
+Practica 5
+
+# =======================================================
+# 1. COMANDOS PARA CREAR ARCHIVOS DE PLAYBOOK
+# =======================================================
+
+# Crear Playbook para instalar Notepad++ en Windows
+sudo nano install_notepadpp.yml
+
+# Contenido de 'install_notepadpp.yml':
+# - name: Instalar Notepad++ en Windows
+#   hosts: win
+#   tasks:
+#     - name: Descargar instalador de Notepad++
+#       win_get_url:
+#         url: https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.6.8/npp.8.6.8.Installer.x64.exe
+#         dest: C:\Users\ansible\Downloads\npp_installer.exe
+#     - name: Instalar Notepad++
+#       win_package:
+#         path: C:\Users\ansible\Downloads\npp_installer.exe
+#         state: present
+#         arguments: /S
+
+
+# Crear Playbook para instalar NGINX en Linux (ADAPTADO a Parrot/Debian con 'apt')
+sudo nano install_nginx.yml
+
+# Contenido de 'install_nginx.yml':
+# - name: Instalar NGINX en Linux (Parrot OS)
+#   hosts: linux
+#   become: true
+#   tasks:
+#     - name: Instalar nginx con apt
+#       apt:
+#         name: nginx
+#         state: present
+#     - name: Iniciar y habilitar nginx
+#       systemd:
+#         name: nginx
+#         enabled: true
+#         state: started
+
+
+# Crear Playbook para crear usuario e instalar bashtop en Linux (ADAPTADO a Parrot/Debian con 'apt')
+sudo nano create_user_and_install_bashtop.yml
+
+# Contenido de 'create_user_and_install_bashtop.yml':
+# - name: Crear usuario y agregarlo al grupo sudo + instalar bashtop en Parrot OS
+#   hosts: linux
+#   become: true
+#   tasks:
+#     - name: Crear usuario adrian123
+#       user:
+#         name: adrian123
+#         state: present
+#         groups: sudo # Grupo de administradores en Debian/Parrot
+#         append: yes
+#     - name: Instalar bashtop con apt
+#       apt:
+#         name: bashtop
+#         state: present
+
+
+# Crear Playbook para crear usuario e instalar Notepad++ en Windows
+sudo nano create_user_and_install_notepadpp.yml
+
+# Contenido de 'create_user_and_install_notepadpp.yml':
+# - name: Crear usuario en Windows con permisos de administrador e instalar Notepad++
+#   hosts: win
+#   tasks:
+#     - name: Crear usuario adrian123
+#       win_user:
+#         name: adrian123
+#         password: "damian123"
+#         state: present
+#     - name: Agregar usuario adrian123 al grupo Administradores
+#       win_group_membership:
+#         name: Administrators
+#         members:
+#           - adrian123
+#         state: present
+#     - name: Descargar instalador de Notepad++
+#       win_get_url:
+#         url: https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.6.8/npp.8.6.8.Installer.x64.exe
+#         dest: C:\Users\ansible\Downloads\npp_installer.exe
+#     - name: Instalar Notepad++
+#       win_package:
+#         path: C:\Users\ansible\Downloads\npp_installer.exe
+#         state: present
+#         arguments: /S
+
+
+# =======================================================
+# 2. COMANDOS PARA EJECUTAR LOS PLAYBOOKS
+# =======================================================
+
+ansible-playbook install_notepadpp.yml
+ansible-playbook install_nginx.yml
+ansible-playbook create_user_and_install_bashtop.yml
+ansible-playbook create_user_and_install_notepadpp.yml
